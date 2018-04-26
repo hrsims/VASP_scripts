@@ -15,17 +15,17 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 
-def setup_kline(lens,length):
+def setup_kline(lens):
     """Completely non-general, and the labels must be added by hand :("""
     x=[0,lens[0],sum(lens[:2]),sum(lens[:3]),sum(lens)]
     labels=['-M','-K',r'$\Gamma$','K','M']
     return x,labels
 
-def path_length(ki,kf,a):
-    pref = 2*np.pi/a
-    return pref*np.linalg.norm(kf-ki)
+def path_length(ki,kf,a,b,c):
+    pref = 2*np.pi/np.array([a,b,c])
+    return np.linalg.norm(pref*(kf-ki))
 
-def set_kpoints():
+def set_kpoints(a,b,c):
     kpts = []
     try:
         with open("KPOINTS_bands",'r') as f:
@@ -43,12 +43,35 @@ def set_kpoints():
     len_array = []
     x_array = []
     for i,k in enumerate(kpts):
-        len_array.append(path_length(kpts[i-1],kpts[i],a))
+        len_array.append(path_length(kpts[i-1],kpts[i],a,b,c))
         x_array.append(np.linspace(sum(len_array[:-1]),len_array[-1],ndiv,endpoint=True))
     fulllen = sum(len_array)
     xx = np.concatenate(x_array)
     x,labels = setup_kline(len_array,fulllen)
     return xx,x,labels
+
+def read_latt_const():
+    """Grab information from POSCAR about ionic species"""
+    infile = "POSCAR"
+    try:
+        with open(infile,'r') as f:
+            f.readline() # comment
+            a0 = float(f.readline.strip())
+            avec = []
+            for i in range(3):
+                avec.append([float(x) for x in f.readline().strip().split()])
+            if a0==1.0:
+                a = np.linalg.norm(avec[0])
+                b = np.linalg.norm(avec[1])
+                c = np.linalg.norm(avec[2])
+            else:
+                a = np.linalg.norm(avec[0])*a0
+                b = np.linalg.norm(avec[1])*a0
+                c = np.linalg.norm(avec[2])*a0
+    except:
+        print("Could not open file POSCAR")
+        exit(1)
+    return a,b,c
 
 if __name__ == "__main__":
     # First open the file just to get some info
@@ -91,23 +114,25 @@ if __name__ == "__main__":
                 f.readline()
 
     # This should not have to be entered by hand!
-    a = 5.431
-    kpts,x,labels = set_kpoints()
+    a,b,c = read_latt_const()
+    kpts,x,labels = set_kpoints(a,b,c)
 
     fig, ax = plt.subplots(1,nspin)
-    for isp in range(nspecies):
-        for ispin in range(nspin):
+    # For more than 5 species, you're on your own
+    cmaps = {0:plt.cm.Reds,1:plt.cm.Blues,2:plt.cm.Oranges,3:plt.cm.Purples,4:plt.cm.Greys}
+    for ispin in range(nspin):
+        for isp in range(nspecies):
             for i in range(nbands):
                 col = proj_array[isp,ispin,:,i]
-                ax[ispin].scatter(range(nk),np.array(energies[0,:,i])-ef,\
-                      c=col,cmap=plt.cm.Reds,s=10*col,edgecolor=None)
-    ax[:].set_ylim(emin,emax)
-    ax[:].set_xlim(0,nk-1)
-    ax[:].axhline(0,c='k',ls='--')
-    ax[:].set_ylabel(r"$E - E_F$ (eV)")
-    ax[:].xaxis.set_ticks(x)
-    ax[:].xaxis.set_ticklabels(labels)
-    for xx in x:
-        ax[:].axvline(xx,c='k')
+                ax[ispin].scatter(kpts,np.array(energies[0,:,i])-ef,\
+                      c=col,cmap=cmaps[isp],s=10*col,edgecolor=None)
+        ax[ispin].set_ylim(emin,emax)
+        ax[ispin].set_xlim(0,max(kpts))
+        ax[ispin].axhline(0,c='k',ls='--')
+        ax[ispin].xaxis.set_ticks(x)
+        ax[ispin].xaxis.set_ticklabels(labels)
+        for xx in x:
+            ax[ispin].axvline(xx,c='k')
+    ax[0].set_ylabel(r"$E - E_F$ (eV)")
     plt.savefig(outfile+".png",dpi=300)
     plt.show()
