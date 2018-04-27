@@ -17,40 +17,71 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 
-def setup_kline(lens,length):
-    """Completely non-general, and the labels must be added by hand :("""
-    x=[0,lens[0],sum(lens[:2]),sum(lens[:3]),sum(lens)]
-    labels=['-M','-K',r'$\Gamma$','K','M']
+def setup_k_label(lens):
+    """Sadly the labels must still be added by hand :("""
+    x = [0,]
+    for l in lens:
+        x.append(l+x[-1])
+    labels=['L',r'$\Gamma$','X',r'$\Gamma$']
     return x,labels
 
-def path_length(ki,kf,a,RorC):
-    pref = 2*np.pi/a
-    return pref*np.linalg.norm(kf-ki)
+def path_length(ki,kf,a,b,c):
+    pref = 2*np.pi/np.array([a,b,c])
+    return np.linalg.norm(pref*(kf-ki))
 
-def set_kpoints():
+def set_kpoints(a,b,c):
     kpts = []
     try:
         with open("KPOINTS_bands",'r') as f:
             f.readline() # comment
             ndiv = int(f.readline().strip())
             f.readline() # had better be Line
-            RorC = f.readline().strip()[0] # Reciprocal or Cartesian?
+            RorC = f.readline().strip()[0] # Reciprocal or Cartesian?, not currently used
             for line in f:
                 if line.strip() != '':
-                    kpts.append([float(x) for x in line.strip().split()[:3]]) # allow for comments
+                    kpts.append([float(x) for x in line.strip().split()])
     except:
         print("Cannot open file KPOINTS_bands")
         exit(1)
+    # list of special points
     kpts = np.array(kpts)
     len_array = []
     x_array = []
     for i,k in enumerate(kpts):
-        len_array.append(path_length(kpts[i-1],kpts[i],a))
-        x_array.append(np.linspace(sum(len_array[:-1]),len_array[-1],ndiv,endpoint=True))
+        # only look at the end of the paths
+        if i%2==0:
+            continue
+        else:
+            len_array.append(path_length(kpts[i-1],kpts[i],a,b,c))
+        x_array.append(np.linspace(sum(len_array[:-1]),sum(len_array[:-1])+len_array[-1],\
+                                   ndiv,endpoint=True))
     fulllen = sum(len_array)
     xx = np.concatenate(x_array)
-    x,labels = setup_kline(len_array,fulllen)
+    x,labels = setup_k_label(len_array)
     return xx,x,labels
+
+def read_latt_const():
+    """Grab information from POSCAR about ionic species"""
+    infile = "POSCAR"
+    try:
+        with open(infile,'r') as f:
+            f.readline() # comment
+            a0 = float(f.readline().strip())
+            avec = []
+            for i in range(3):
+                avec.append([float(x) for x in f.readline().strip().split()])
+            if a0==1.0:
+                a = np.linalg.norm(avec[0])
+                b = np.linalg.norm(avec[1])
+                c = np.linalg.norm(avec[2])
+            else:
+                a = np.linalg.norm(avec[0])*a0
+                b = np.linalg.norm(avec[1])*a0
+                c = np.linalg.norm(avec[2])*a0
+    except:
+        print("Could not open file POSCAR")
+        exit(1)
+    return a,b,c
 
 if __name__ == "__main__":
     with open('EIGENVAL','r') as f:
@@ -66,6 +97,8 @@ if __name__ == "__main__":
         kx[i],ky[i],kz[i],wgt = [float(x) for x in f.readline().split()]
         for j in range(n):
           temp = f.readline().split()
+          # if there's no spin polarization, "endn" will actually be
+          # the occupation, but we don't use it so shrug
           ii, enup, endn = int(temp[0]), float(temp[1]), float(temp[2])
           e[ii-1].append([enup,endn])
         f.readline()
@@ -95,15 +128,28 @@ if __name__ == "__main__":
     e = np.array(e)
 
     fig, ax = plt.subplots(1,nspin)
-    xx,x,labels = setup_kline(x,labels)
+
+    a,b,c = read_latt_const()
+    xx,x,labels = set_kpoints(a,b,c)
+
     colors = {0:'k',1:'r'}
-    for ispin in range(nspin):
+    # unlike in proplot, let's do a line plot here, as there's no extra info to convey
+    if hasattr(ax,'__iter__'):
+        for ispin in range(nspin):
+            for i in range(n):
+                ax[ispin].plot(xx,np.array(e[i,:,ispin])-ef,c=colors[ispin])
+            ax[ispin].set_ylim(emin,emax)
+            ax[ispin].set_xlim(0,max(xx))
+            ax[ispin].axhline(0,c='k',ls='--')
+            ax[ispin].xaxis.set_ticks(x,labels)
+        ax[0].set_ylabel(r"$E - E_F$ (eV)")
+    else:
         for i in range(n):
-            ax[ispin].scatter(xx,np.array(e[i,:,ispin])-ef,c=colors[ispin])
-        ax[ispin].set_ylim(emin,emax)
-        ax[ispin].set_xlim(0,max(xx))
-        ax[ispin].axhline(0,c='k',ls='--')
-        ax[ispin].xaxis.set_ticks(x,labels)
-    ax[0].set_ylabel(r"$E - E_F$ (eV)")
+            ax.plot(xx,np.array(e[i,:,0])-ef,c='k')
+        ax.set_ylim(emin,emax)
+        ax.set_xlim(0,max(xx))
+        ax.axhline(0,c='k',ls='--')
+        ax.xaxis.set_ticks(x,labels)
+        ax.set_ylabel(r"$E - E_F$ (eV)")
     plt.savefig(bfile,dpi=300)
     plt.show()

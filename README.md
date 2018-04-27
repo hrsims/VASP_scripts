@@ -1,6 +1,9 @@
 # VASP_scripts
 Some useful (mostly Python) scripts I use for postprocessing VASP. Generally not overlapping with the very nice VTST ones.
 
+bandparse.sp.py
+A script to read the EIGENVAL file and produce a band plot. Sp means that it supports spin-polarized bands.
+
 proparse_multi.py
 A script to read the PROCAR file and produce a data file containing both the band structure and the projection of the wave function on atomic wave functions at the atomic sites.
 

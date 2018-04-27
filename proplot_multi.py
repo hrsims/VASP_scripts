@@ -16,11 +16,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 def setup_k_label(lens):
-    """Completely non-general, and the labels must be added by hand :("""
+    """Sadly the labels must still be added by hand :("""
     x = [0,]
     for l in lens:
         x.append(l+x[-1])
-    #x=[0,lens[0],sum(lens[:2]),sum(lens[:3]),sum(lens)]
     labels=['L',r'$\Gamma$','X',r'$\Gamma$']
     return x,labels
 
@@ -35,7 +34,7 @@ def set_kpoints(a,b,c):
             f.readline() # comment
             ndiv = int(f.readline().strip())
             f.readline() # had better be Line
-            RorC = f.readline().strip()[0] # Reciprocal or Cartesian?
+            RorC = f.readline().strip()[0] # Reciprocal or Cartesian?, not currently used
             for line in f:
                 if line.strip() != '':
                     kpts.append([float(x) for x in line.strip().split()])
@@ -62,24 +61,24 @@ def set_kpoints(a,b,c):
 def read_latt_const():
     """Grab information from POSCAR about ionic species"""
     infile = "POSCAR"
-    #try:
-    with open(infile,'r') as f:
-        f.readline() # comment
-        a0 = float(f.readline().strip())
-        avec = []
-        for i in range(3):
-            avec.append([float(x) for x in f.readline().strip().split()])
-        if a0==1.0:
-            a = np.linalg.norm(avec[0])
-            b = np.linalg.norm(avec[1])
-            c = np.linalg.norm(avec[2])
-        else:
-            a = np.linalg.norm(avec[0])*a0
-            b = np.linalg.norm(avec[1])*a0
-            c = np.linalg.norm(avec[2])*a0
-    #except:
-    #    print("Could not open file POSCAR")
-    #    exit(1)
+    try:
+        with open(infile,'r') as f:
+            f.readline() # comment
+            a0 = float(f.readline().strip())
+            avec = []
+            for i in range(3):
+                avec.append([float(x) for x in f.readline().strip().split()])
+            if a0==1.0:
+                a = np.linalg.norm(avec[0])
+                b = np.linalg.norm(avec[1])
+                c = np.linalg.norm(avec[2])
+            else:
+                a = np.linalg.norm(avec[0])*a0
+                b = np.linalg.norm(avec[1])*a0
+                c = np.linalg.norm(avec[2])*a0
+    except:
+        print("Could not open file POSCAR")
+        exit(1)
     return a,b,c
 
 if __name__ == "__main__":
@@ -124,7 +123,6 @@ if __name__ == "__main__":
                         proj_array[isp,ispin,ik,ib] = float(bandline[ib])
                 f.readline()
 
-    # This should not have to be entered by hand!
     a,b,c = read_latt_const()
     kpts,x,labels = set_kpoints(a,b,c)
 
