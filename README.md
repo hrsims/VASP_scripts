@@ -12,3 +12,6 @@ A script to read the output from proparse_multi.py and plot it in a "fat bands" 
 
 xyz2poscar.py
 A script to convert an xyz file derived from a known structure (perhaps created in a way that makes it difficult or impossible to save directly as a POSCAR) to a POSCAR format file.
+
+POSCAR, KPOINTS_bands, EIGENVAL, PROCAR
+Sample VASP output for Si
