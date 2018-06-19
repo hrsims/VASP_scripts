@@ -113,17 +113,17 @@ if __name__ == "__main__":
                     f.readline() # blank
                     f.readline() # labels
                     for isp in range(nspecies):
-                        for i in range(ntypes[ispin]):
+                        for i in range(ntypes[isp]):
                             temp = f.readline().strip().split()
                             proj_array[isp,ispin,ik,ib,0] = float(temp[1])
                             proj_array[isp,ispin,ik,ib,1] = sum([float(x) for x in temp[2:5]])
                             proj_array[isp,ispin,ik,ib,2] = sum([float(x) for x in temp[5:10]])
                             # in case you also want all contributions from a species
                             proj_array_tot[isp,ispin,ik,ib] += float(temp[10])
-                        temp = f.readline().strip().split()
-                        # Normalize by the total weight, which is generally a bit less than 1
-                        proj_array[isp,ispin,ik,ib,:] /= float(temp[10]) # total projections
-                        proj_array_tot[isp,ispin,ik,ib] /= float(temp[10]) # total projections
+                    temp = f.readline().strip().split()
+                    # Normalize by the total weight, which is generally a bit less than 1
+                    proj_array[isp,ispin,ik,ib,:] /= float(temp[10]) # total projections
+                    proj_array_tot[isp,ispin,ik,ib] /= float(temp[10]) # total projections
                 f.readline()
     #except:
     #    print("Cannot open file "+infile)
